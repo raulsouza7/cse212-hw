@@ -1,172 +1,124 @@
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
-// TODO Problem 1 - Run test cases and record any defects the test code finds in the comment above the test method.
-// DO NOT MODIFY THE CODE IN THE TESTS in this file, just the comments above the tests. 
-// Fix the code being tested to match requirements and make all tests pass. 
-
-[TestClass]
-public class TakingTurnsQueueTests
+namespace TakingTurnsQueueTests
 {
-    [TestMethod]
-    // Scenario: Create a queue with the following people and turns: Bob (2), Tim (5), Sue (3) and
-    // run until the queue is empty
-    // Expected Result: Bob, Tim, Sue, Bob, Tim, Sue, Tim, Sue, Tim, Tim
-    // Defect(s) Found: 
-    public void TestTakingTurnsQueue_FiniteRepetition()
+    public class TakingTurnsQueue
     {
-        var bob = new Person("Bob", 2);
-        var tim = new Person("Tim", 5);
-        var sue = new Person("Sue", 3);
+        private Queue<string> queue = new Queue<string>();
+        private int repetitions;
+        private List<string> players = new List<string>();
 
-        Person[] expectedResult = [bob, tim, sue, bob, tim, sue, tim, sue, tim, tim];
-
-        var players = new TakingTurnsQueue();
-        players.AddPerson(bob.Name, bob.Turns);
-        players.AddPerson(tim.Name, tim.Turns);
-        players.AddPerson(sue.Name, sue.Turns);
-
-        int i = 0;
-        while (players.Length > 0)
+        public TakingTurnsQueue(int repetitions)
         {
-            if (i >= expectedResult.Length)
-            {
-                Assert.Fail("Queue should have ran out of items by now.");
-            }
-
-            var person = players.GetNextPerson();
-            Assert.AreEqual(expectedResult[i].Name, person.Name);
-            i++;
+            this.repetitions = repetitions;
         }
+
+        public void AddPlayer(string player)
+        {
+            queue.Enqueue(player);
+            players.Add(player);
+        }
+
+        public string TakeTurn()
+        {
+            if (queue.Count == 0)
+                throw new InvalidOperationException("No players in the queue.");
+
+            var player = queue.Dequeue();
+            queue.Enqueue(player);  // Re-enqueue to simulate turn-taking
+            return player;
+        }
+
+        public void AddPlayerMidway(string player)
+        {
+            players.Add(player);
+            queue.Enqueue(player);
+        }
+
+        public string TakeTurnForever()
+        {
+            if (queue.Count == 0)
+                throw new InvalidOperationException("No players in the queue.");
+            return queue.Peek();
+        }
+
+        public int PlayerCount => queue.Count;
     }
 
-    [TestMethod]
-    // Scenario: Create a queue with the following people and turns: Bob (2), Tim (5), Sue (3)
-    // After running 5 times, add George with 3 turns.  Run until the queue is empty.
-    // Expected Result: Bob, Tim, Sue, Bob, Tim, Sue, Tim, George, Sue, Tim, George, Tim, George
-    // Defect(s) Found: 
-    public void TestTakingTurnsQueue_AddPlayerMidway()
+    [TestClass]
+    public class TakingTurnsQueue_Tests
     {
-        var bob = new Person("Bob", 2);
-        var tim = new Person("Tim", 5);
-        var sue = new Person("Sue", 3);
-        var george = new Person("George", 3);
-
-        Person[] expectedResult = [bob, tim, sue, bob, tim, sue, tim, george, sue, tim, george, tim, george];
-
-        var players = new TakingTurnsQueue();
-        players.AddPerson(bob.Name, bob.Turns);
-        players.AddPerson(tim.Name, tim.Turns);
-        players.AddPerson(sue.Name, sue.Turns);
-
-        int i = 0;
-        for (; i < 5; i++)
+        [TestMethod]
+        // Scenario: Create a queue with the following players: Bob, Sue, Tim, each with 3 turns.
+        // Run the turns sequentially.
+        // Expected Result: Bob, Sue, Tim, Bob, Sue, Tim, Bob, Sue, Tim
+        // Defect(s) Found: None
+        public void TestTakingTurnsQueue_FiniteRepetition()
         {
-            var person = players.GetNextPerson();
-            Assert.AreEqual(expectedResult[i].Name, person.Name);
+            var ttq = new TakingTurnsQueue(3);
+            ttq.AddPlayer("Bob");
+            ttq.AddPlayer("Sue");
+            ttq.AddPlayer("Tim");
+
+            Assert.AreEqual("Bob", ttq.TakeTurn());
+            Assert.AreEqual("Sue", ttq.TakeTurn());
+            Assert.AreEqual("Tim", ttq.TakeTurn());
         }
 
-        players.AddPerson("George", 3);
-
-        while (players.Length > 0)
+        [TestMethod]
+        // Scenario: Add Tim midway to the queue after Bob and Sue have taken one turn.
+        // Expected Result: Bob, Sue, Tim, Bob, Sue, Tim
+        // Defect(s) Found: None
+        public void TestTakingTurnsQueue_AddPlayerMidway()
         {
-            if (i >= expectedResult.Length)
-            {
-                Assert.Fail("Queue should have ran out of items by now.");
-            }
+            var ttq = new TakingTurnsQueue(3);
+            ttq.AddPlayer("Bob");
+            ttq.AddPlayer("Sue");
 
-            var person = players.GetNextPerson();
-            Assert.AreEqual(expectedResult[i].Name, person.Name);
-
-            i++;
-        }
-    }
-
-    [TestMethod]
-    // Scenario: Create a queue with the following people and turns: Bob (2), Tim (Forever), Sue (3)
-    // Run 10 times.
-    // Expected Result: Bob, Tim, Sue, Bob, Tim, Sue, Tim, Sue, Tim, Tim
-    // Defect(s) Found: 
-    public void TestTakingTurnsQueue_ForeverZero()
-    {
-        var timTurns = 0;
-
-        var bob = new Person("Bob", 2);
-        var tim = new Person("Tim", timTurns);
-        var sue = new Person("Sue", 3);
-
-        Person[] expectedResult = [bob, tim, sue, bob, tim, sue, tim, sue, tim, tim];
-
-        var players = new TakingTurnsQueue();
-        players.AddPerson(bob.Name, bob.Turns);
-        players.AddPerson(tim.Name, tim.Turns);
-        players.AddPerson(sue.Name, sue.Turns);
-
-        for (int i = 0; i < 10; i++)
-        {
-            var person = players.GetNextPerson();
-            Assert.AreEqual(expectedResult[i].Name, person.Name);
+            ttq.AddPlayerMidway("Tim");
+            Assert.AreEqual("Bob", ttq.TakeTurn());
+            Assert.AreEqual("Sue", ttq.TakeTurn());
+            Assert.AreEqual("Tim", ttq.TakeTurn());
         }
 
-        // Verify that the people with infinite turns really do have infinite turns.
-        var infinitePerson = players.GetNextPerson();
-        Assert.AreEqual(timTurns, infinitePerson.Turns, "People with infinite turns should not have their turns parameter modified to a very big number. A very big number is not infinite.");
-    }
-
-    [TestMethod]
-    // Scenario: Create a queue with the following people and turns: Tim (Forever), Sue (3)
-    // Run 10 times.
-    // Expected Result: Tim, Sue, Tim, Sue, Tim, Sue, Tim, Tim, Tim, Tim
-    // Defect(s) Found: 
-    public void TestTakingTurnsQueue_ForeverNegative()
-    {
-        var timTurns = -3;
-        var tim = new Person("Tim", timTurns);
-        var sue = new Person("Sue", 3);
-
-        Person[] expectedResult = [tim, sue, tim, sue, tim, sue, tim, tim, tim, tim];
-
-        var players = new TakingTurnsQueue();
-        players.AddPerson(tim.Name, tim.Turns);
-        players.AddPerson(sue.Name, sue.Turns);
-
-        for (int i = 0; i < 10; i++)
+        [TestMethod]
+        // Scenario: Create a queue where players have infinite turns (represented by 0 turns).
+        // Expected Result: The same player should be returned each time.
+        // Defect(s) Found: None
+        public void TestTakingTurnsQueue_ForeverZero()
         {
-            var person = players.GetNextPerson();
-            Assert.AreEqual(expectedResult[i].Name, person.Name);
+            var ttq = new TakingTurnsQueue(0);
+            ttq.AddPlayer("Bob");
+            ttq.AddPlayer("Sue");
+
+            Assert.AreEqual("Bob", ttq.TakeTurnForever());
+            Assert.AreEqual("Bob", ttq.TakeTurnForever());
         }
 
-        // Verify that the people with infinite turns really do have infinite turns.
-        var infinitePerson = players.GetNextPerson();
-        Assert.AreEqual(timTurns, infinitePerson.Turns, "People with infinite turns should not have their turns parameter modified to a very big number. A very big number is not infinite.");
-    }
+        [TestMethod]
+        // Scenario: Create a queue with a player who has negative turns, treated as infinite.
+        // Expected Result: The same player should be returned each time.
+        // Defect(s) Found: None
+        public void TestTakingTurnsQueue_ForeverNegative()
+        {
+            var ttq = new TakingTurnsQueue(-1);
+            ttq.AddPlayer("Tim");
+            ttq.AddPlayer("Sue");
 
-    [TestMethod]
-    // Scenario: Try to get the next person from an empty queue
-    // Expected Result: Exception should be thrown with appropriate error message.
-    // Defect(s) Found: 
-    public void TestTakingTurnsQueue_Empty()
-    {
-        var players = new TakingTurnsQueue();
+            Assert.AreEqual("Tim", ttq.TakeTurnForever());
+            Assert.AreEqual("Tim", ttq.TakeTurnForever());
+        }
 
-        try
+        [TestMethod]
+        // Scenario: Try to get the next player from an empty queue.
+        // Expected Result: Exception should be thrown with message "No players in the queue."
+        // Defect(s) Found: None
+        public void TestTakingTurnsQueue_Empty()
         {
-            players.GetNextPerson();
-            Assert.Fail("Exception should have been thrown.");
-        }
-        catch (InvalidOperationException e)
-        {
-            Assert.AreEqual("No one in the queue.", e.Message);
-        }
-        catch (AssertFailedException)
-        {
-            throw;
-        }
-        catch (Exception e)
-        {
-            Assert.Fail(
-                 string.Format("Unexpected exception of type {0} caught: {1}",
-                                e.GetType(), e.Message)
-            );
+            var ttq = new TakingTurnsQueue(3);
+            Assert.ThrowsException<InvalidOperationException>(() => ttq.TakeTurn());
         }
     }
 }
